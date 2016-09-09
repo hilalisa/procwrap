@@ -2,7 +2,6 @@ executable="ping"
 args=""
 restartPauseMs=2000
 maxLogSizeMb=64
-truncateIntervalSeconds=5
 logFile="log.txt"
 maxLogAgeDays=28
 maxLogBackups=2
