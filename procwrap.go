@@ -120,5 +120,9 @@ func main() {
 			time.Sleep(time.Duration(conf.RestartPauseMs) * time.Millisecond)
 			main()
 		}
+	} else {
+		if *verboseOutput {
+			log.Println("Executable terminated without error")
+		}
 	}
 }
