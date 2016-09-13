@@ -8,9 +8,12 @@ procwrap is a command that does the following:
 - restart child process on failure (optional)
 - truncate log file (uses gopkg.in/natefinch/lumberjack.v2)
 
-procwrap has no arguments and expects to find a procwrap.toml @ ./procwrap.toml.
+####command line args
 
-Example procwrap.toml:
+- v : enables verbose output 
+- p : process definition file, e.g. procwrap.toml (uses github.com/spf13/viper so can be toml or yml)
+
+Example process definition file:
 
 ```
   executable="ping"
