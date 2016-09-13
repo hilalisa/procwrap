@@ -30,12 +30,21 @@ type config struct {
 	TimeFormat            string
 }
 
+var (
+	configFile    *string
+	verboseOutput *bool
+)
+
 func main() {
 
-	configFile := flag.String("p", "./procwrap.toml", "process definition file, TOML format, typically ./procwrap.toml")
-	verboseOutput := flag.Bool("v", false, "Verbose output")
+	configFile = flag.String("p", "./procwrap.toml", "process definition file, TOML format, typically ./procwrap.toml")
+	verboseOutput = flag.Bool("v", false, "Verbose output")
 	flag.Parse()
 
+	exeProc()
+}
+
+func exeProc() {
 	if *verboseOutput {
 		log.Printf("Starting procwrap using def: %s", *configFile)
 	}
@@ -118,7 +127,7 @@ func main() {
 		if conf.RestartOnFailure {
 			logger.Close()
 			time.Sleep(time.Duration(conf.RestartPauseMs) * time.Millisecond)
-			main()
+			exeProc()
 		}
 	} else {
 		if *verboseOutput {
