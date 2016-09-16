@@ -45,8 +45,10 @@ func main() {
 }
 
 func exeProc() {
-	if *verboseOutput {
-		log.Printf("Starting procwrap using def: %s", *configFile)
+	writeVerbose("Starting procwrap using def: " + *configFile)
+
+	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
+		log.Printf("process definition file not found: " + *configFile)
 	}
 
 	viper := viper.New()
@@ -76,6 +78,7 @@ func exeProc() {
 		if err != nil {
 			log.Println(err.Error())
 		}
+
 		log.Println(string(jsonBytes))
 	}
 
@@ -98,9 +101,7 @@ func exeProc() {
 	cmd.Stdout = stdOutWriter
 	cmd.Stderr = stdErrWriter
 
-	if *verboseOutput {
-		log.Println("Starting executable")
-	}
+	writeVerbose("Starting executable")
 
 	err := cmd.Run()
 
@@ -130,8 +131,12 @@ func exeProc() {
 			exeProc()
 		}
 	} else {
-		if *verboseOutput {
-			log.Println("Executable terminated without error")
-		}
+		writeVerbose("Executable terminated without error")
+	}
+}
+
+func writeVerbose(msg string) {
+	if *verboseOutput {
+		log.Println(msg)
 	}
 }

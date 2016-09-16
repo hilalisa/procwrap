@@ -17,13 +17,13 @@ Example process definition file:
 
 ```
   executable="ping"
-  args=["-i 2", "127.0.0.1"]
+  args=["127.0.0.1"]
   restartPauseMs=2000
   maxLogSizeMb=64
   logFile="log.txt"
   maxLogAgeDays=28
   maxLogBackups=2
-  fatalLogMsgPattern="{\"TimeUtc\": \"$dateTimeUtc\",\"ServiceKey\": \"filebeat\",\"Title\": \"FILEBEAT FATAL ERROR: $error\",\"HostAddress\": \"$hostIpAddress\"}"
+  fatalLogMsgPattern="{\"TimeUtc\": \"$dateTimeUtc\",\"ServiceKey\": \"MyServiceName\",\"Title\": \"MyService FATAL ERROR: $error\",\"HostAddress\": \"$hostIpAddress\"}"
   timeFormat="2006-01-02 15:04:05"
   ```
   
