@@ -1,4 +1,4 @@
-executable="ping"
+executable="pig"
 args=["127.0.0.1"]
 restartPauseMs=2000
 maxLogSizeMb=64
@@ -7,3 +7,4 @@ maxLogAgeDays=28
 maxLogBackups=2
 fatalLogMsgPattern="{\"TimeUtc\": \"$dateTimeUtc\",\"ServiceKey\": \"MyServiceName\",\"Title\": \"MyService FATAL ERROR: $error\",\"HostAddress\": \"$hostIpAddress\"}"
 timeFormat="2006-01-02 15:04:05"
+healthCheckPort=4004

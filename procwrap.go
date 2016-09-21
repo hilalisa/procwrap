@@ -7,8 +7,10 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -28,11 +30,15 @@ type config struct {
 	HasFatalLogMsgPattern bool
 	HasTimeformat         bool
 	TimeFormat            string
+	HealthCheckPort       int
 }
 
 var (
-	configFile    *string
-	verboseOutput *bool
+	configFile       *string
+	verboseOutput    *bool
+	processHealthy   bool
+	conf             config
+	lastProcessError error
 )
 
 func main() {
@@ -41,36 +47,26 @@ func main() {
 	verboseOutput = flag.Bool("v", false, "Verbose output")
 	flag.Parse()
 
-	exeProc()
-}
-
-func exeProc() {
 	writeVerbose("Starting procwrap using def: " + *configFile)
 
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
 		log.Printf("process definition file not found: " + *configFile)
 	}
 
-	viper := viper.New()
-	viper.SetConfigFile(*configFile)
-	viper.ReadInConfig()
+	readConfFile()
 
-	conf := config{
-		Executable:            viper.GetString("executable"),
-		HasArgs:               viper.IsSet("args"),
-		Args:                  viper.GetStringSlice("args"),
-		OutputDebug:           viper.GetBool("outputDebug"),
-		RestartOnFailure:      viper.IsSet("restartPauseMs"),
-		RestartPauseMs:        viper.GetInt("restartPauseMs"),
-		MaxLogSizeMb:          viper.GetInt("maxLogSizeMb"),
-		LogFile:               viper.GetString("logFile"),
-		MaxLogAgeDays:         viper.GetInt("maxLogAgeDays"),
-		MaxLogBackups:         viper.GetInt("maxLogBackups"),
-		FatalLogMsgPattern:    viper.GetString("fatalLogMsgPattern"),
-		HasFatalLogMsgPattern: viper.IsSet("fatalLogMsgPattern"),
-		HasTimeformat:         viper.IsSet("timeformat"),
-		TimeFormat:            viper.GetString("timeformat"),
+	if conf.HealthCheckPort > 0 {
+		writeVerbose("Starting healthcheck endpoing on port " + strconv.Itoa(conf.HealthCheckPort))
+		http.HandleFunc("/", healthCheckHandler)
+		go http.ListenAndServe(":"+strconv.Itoa(conf.HealthCheckPort), nil)
 	}
+
+	exeProc()
+}
+
+func exeProc() {
+
+	readConfFile()
 
 	if *verboseOutput {
 		jsonBytes, err := json.MarshalIndent(conf, "", " ")
@@ -103,9 +99,18 @@ func exeProc() {
 
 	writeVerbose("Starting executable")
 
-	err := cmd.Run()
+	lastProcessError = cmd.Start()
 
-	if err != nil {
+	if lastProcessError == nil {
+
+		processHealthy = true
+
+		lastProcessError = cmd.Wait()
+	}
+
+	if lastProcessError != nil {
+
+		processHealthy = false
 
 		if conf.HasFatalLogMsgPattern {
 			timeUtc := time.Now().UTC()
@@ -121,7 +126,7 @@ func exeProc() {
 
 			fatalMessage := strings.Replace(conf.FatalLogMsgPattern, "$dateTimeUtc", timeStr, -1)
 			fatalMessage = strings.Replace(fatalMessage, "$hostIpAddress", hostAddress, -1)
-			fatalMessage = strings.Replace(fatalMessage, "$error", err.Error(), -1)
+			fatalMessage = strings.Replace(fatalMessage, "$error", lastProcessError.Error(), -1)
 			stdErrWriter.Write([]byte(fatalMessage + "\r\n"))
 		}
 
@@ -138,5 +143,38 @@ func exeProc() {
 func writeVerbose(msg string) {
 	if *verboseOutput {
 		log.Println(msg)
+	}
+}
+
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	if processHealthy {
+		w.WriteHeader(http.StatusOK)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func readConfFile() {
+
+	viper := viper.New()
+	viper.SetConfigFile(*configFile)
+	viper.ReadInConfig()
+
+	conf = config{
+		Executable:            viper.GetString("executable"),
+		HasArgs:               viper.IsSet("args"),
+		Args:                  viper.GetStringSlice("args"),
+		OutputDebug:           viper.GetBool("outputDebug"),
+		RestartOnFailure:      viper.IsSet("restartPauseMs"),
+		RestartPauseMs:        viper.GetInt("restartPauseMs"),
+		MaxLogSizeMb:          viper.GetInt("maxLogSizeMb"),
+		LogFile:               viper.GetString("logFile"),
+		MaxLogAgeDays:         viper.GetInt("maxLogAgeDays"),
+		MaxLogBackups:         viper.GetInt("maxLogBackups"),
+		FatalLogMsgPattern:    viper.GetString("fatalLogMsgPattern"),
+		HasFatalLogMsgPattern: viper.IsSet("fatalLogMsgPattern"),
+		HasTimeformat:         viper.IsSet("timeformat"),
+		TimeFormat:            viper.GetString("timeformat"),
+		HealthCheckPort:       viper.GetInt("healthCheckPort"),
 	}
 }
