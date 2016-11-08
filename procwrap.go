@@ -32,8 +32,8 @@ type config struct {
 	HasTimeformat         bool
 	TimeFormat            string
 	HealthCheckPort       int
-	LogFileMode           uint
-	LogFileModeIsSet      bool
+	LogFilePerms          string
+	LogFilePermsIsSet     bool
 }
 
 var (
@@ -64,11 +64,25 @@ func main() {
 		go http.ListenAndServe(":"+strconv.Itoa(conf.HealthCheckPort), nil)
 	}
 
-	if conf.LogFileModeIsSet {
+	if conf.LogFilePermsIsSet {
 
-		err := ioutil.WriteFile(conf.LogFile, nil, os.FileMode(conf.LogFileMode))
+		if _, err := os.Stat(conf.LogFile); os.IsNotExist(err) {
+			fileMode, err := strconv.Atoi("0" + conf.LogFilePerms)
+			if err == nil {
+				writeVerbose("Creatimg file " + conf.LogFilePerms)
+				err = ioutil.WriteFile(conf.LogFile, make([]byte, 0), os.FileMode(fileMode))
+			}
+			if err != nil {
+				log.Printf("Unable to create log file " + conf.LogFile)
+				log.Printf(err.Error())
+				return
+			}
+		}
+
+		writeVerbose("Setting file perms: chmod " + conf.LogFilePerms + " " + conf.LogFile)
+		err := exec.Command("chmod", conf.LogFilePerms, conf.LogFile).Run()
 		if err != nil {
-			log.Printf("Unable to create log file " + conf.LogFile)
+			log.Printf("Unable to set log file perms " + conf.LogFile)
 			log.Printf(err.Error())
 			return
 		}
@@ -189,11 +203,11 @@ func readConfFile() {
 		HasTimeformat:         viper.IsSet("timeformat"),
 		TimeFormat:            viper.GetString("timeformat"),
 		HealthCheckPort:       viper.GetInt("healthCheckPort"),
-		LogFileModeIsSet:      viper.IsSet("LogFileMode"),
+		LogFilePermsIsSet:     viper.IsSet("LogFilePerms"),
 	}
 
-	if conf.LogFileModeIsSet {
-		conf.LogFileMode = uint(viper.GetInt("LogFileMode"))
+	if conf.LogFilePermsIsSet {
+		conf.LogFilePerms = viper.GetString("LogFilePerms")
 	}
 
 }
