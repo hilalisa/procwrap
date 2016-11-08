@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -31,6 +32,8 @@ type config struct {
 	HasTimeformat         bool
 	TimeFormat            string
 	HealthCheckPort       int
+	LogFileMode           uint
+	LogFileModeIsSet      bool
 }
 
 var (
@@ -59,6 +62,16 @@ func main() {
 		writeVerbose("Starting healthcheck endpoing on port " + strconv.Itoa(conf.HealthCheckPort))
 		http.HandleFunc("/", healthCheckHandler)
 		go http.ListenAndServe(":"+strconv.Itoa(conf.HealthCheckPort), nil)
+	}
+
+	if conf.LogFileModeIsSet {
+
+		err := ioutil.WriteFile(conf.LogFile, nil, os.FileMode(conf.LogFileMode))
+		if err != nil {
+			log.Printf("Unable to create log file " + conf.LogFile)
+			log.Printf(err.Error())
+			return
+		}
 	}
 
 	exeProc()
@@ -176,5 +189,11 @@ func readConfFile() {
 		HasTimeformat:         viper.IsSet("timeformat"),
 		TimeFormat:            viper.GetString("timeformat"),
 		HealthCheckPort:       viper.GetInt("healthCheckPort"),
+		LogFileModeIsSet:      viper.IsSet("LogFileMode"),
 	}
+
+	if conf.LogFileModeIsSet {
+		conf.LogFileMode = uint(viper.GetInt("LogFileMode"))
+	}
+
 }
